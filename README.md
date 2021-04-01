@@ -1,2 +1,3 @@
 # haskstat
-Basic statistical tools to describe data in Haskell.
+
+This code mimicks the numpy implementation.
