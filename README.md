@@ -1,3 +1,3 @@
 # haskstat
 
-This code mimicks the numpy implementation.
+Simple statistical package
