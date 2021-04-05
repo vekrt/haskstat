@@ -1,10 +1,20 @@
 import Data.List
+import Data.Maybe
+
+sample:: Num a => [a]
+sample = [2, 8, 0, 4, 1, 9, 9, 0, 12]
 
 floatLength :: Fractional a => [b] -> a
 floatLength xs = fromIntegral $ length xs
 
 mean :: Fractional a => [a] -> a
-mean x = (foldl' (+) 0 x) / fromIntegral (length x)
+mean xs = (foldl' (+) 0 xs) / floatLength xs
+
+trimmedMean :: Fractional a => [a] -> Int -> a
+trimmedMean xs 0 = mean xs
+trimmedMean xs m = mean $ take (n-2*m) $ drop m xs
+	where
+		n = length xs
 
 var :: Fractional a => [a] -> a
 var xs =  (x2Sum/n - (xSum/n)^2)
@@ -30,12 +40,62 @@ skewness xs = (mu3/n) / (mu2/n)**(1.5)
 		(mu2, mu3) = foldl' (\(s,t) x -> (s + (x-mu)^2, t + (x-mu)^3)) (0, 0) xs
 		n = floatLength xs
 
+quartileSkewness :: (RealFrac a, Floating a) => [a] -> a
+quartileSkewness xs = (q3 + q1 - 2.0*q2)/(q3 - q1)
+		where
+			q1 = percentile xs 25
+			q2 = median xs
+			q3 = percentile xs 75
+
+octileSkewness :: (RealFrac a, Floating a) => [a] -> a
+octileSkewness xs = (q875 + q125 - 2.0*q2)/(q875 - q125)
+	where
+		q125 = percentile xs 12.5
+		q2 = median xs 
+		q875 = percentile xs 87.5
+
+substractValue :: Floating a => [a] -> a -> [a]
+substractValue (x:xs) v = abs(x-v):(substractValue xs v)
+substractValue [] v = []
+
+mad :: (RealFrac a, Floating a) => [a] -> a
+mad xs = median dev
+	where
+		dev = substractValue xs $ median xs 
+
+--medcouple :: (Ord a, Floating a, RealFrac a) => [a] -> a
+--medcouple xs = med 
+--	where
+--		sorted_xs = reverse $ sort xs
+--		med = median sorted_xs
+--		zs = sorted_xs - med
+--		h_zi_zj = [
+--		x_plus = filter (med<) xs
+--		x_minus = filter (med>) xs
+
+rank :: (Enum a, Num a, Ord a, Fractional a) => [a] -> [a]
+rank xs = fromJust <$> map (\k -> lookup k pairs) xs
+	where
+		g = groupBy (\a b -> fst a == fst b) $ zip (sort xs) [1..]
+		r = map (\k -> mean $ map snd k) g
+		pairs = zip (nub (sort xs)) r
+
 kurtosis :: Floating a => [a] -> a
 kurtosis xs = n * mu4 / mu2^2
 	where 
 		mu = mean xs
 		(mu2, mu4) = foldl' (\(s, f) x -> (s + (x-mu)^2, f + (x-mu)^4)) (0, 0) xs
 		n = floatLength xs
+
+robustKurtosis :: (RealFrac a, Floating a) => [a] -> a
+robustKurtosis xs = ((q875 - q625) + (q375 - q125))/(q75 - q25)
+	where
+		q125 = percentile xs 12.5
+		q25  = percentile xs 25
+		q375 = percentile xs 37.5
+		q625 = percentile xs 62.5
+		q75  = percentile xs 75
+		q875 = percentile xs 87.5
 
 percentile :: (Ord a, Fractional a, RealFrac a) => [a] -> a -> a
 percentile xs 0 = minimum xs
