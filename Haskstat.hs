@@ -10,7 +10,7 @@ floatLength xs = fromIntegral $ length xs
 mean :: Fractional a => [a] -> a
 mean xs = (foldl' (+) 0 xs) / floatLength xs
 
-trimmedMean :: Fractional a => [a] -> Int -> a
+trimmedMean :: (Ord a, Fractional a) => [a] -> Int -> a
 trimmedMean xs 0 = mean xs
 trimmedMean xs m = mean $ take (n-2*m) $ drop m (sort xs)
 	where
