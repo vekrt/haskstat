@@ -1,7 +1,12 @@
+{-# LANGUAGE ForeignFunctionInterface #-}
+
 module Haskstat where
 
 import Data.List
 import Data.Maybe
+import Data.Complex
+
+foreign import ccall "erf" c_erf :: Double -> Double
 
 floatLength :: Fractional a => [b] -> a
 floatLength xs = fromIntegral $ length xs
@@ -148,11 +153,8 @@ steps step start stop
     | start < (stop-step) = (start, start+step) : steps step (start+step) stop
     | otherwise = [(start,stop)]
 
-e :: Floating a => a
-e = 2.718281828459045
-
-jarqueBera :: Floating a => [a] -> (a, a)
-jarqueBera xs = (value, e**(-0.5*value))
+jarqueBera :: [Double] -> (Double, Double)
+jarqueBera xs = (value, exp (-0.5*value))
     where
         n = fromIntegral $ length xs
         mu = mean xs
@@ -160,3 +162,79 @@ jarqueBera xs = (value, e**(-0.5*value))
         s = (mu3/n)/(mu2/n)**1.5
         k = n * mu4 /mu2^2
         value = n / 6.0 * (s^2 + 0.25*(k - 3.0)^2)
+
+fft :: (Enum a, Floating a, RealFloat a) => [Complex a] -> [Complex a]
+fft xs@(y:ys) 
+    | n > 1 = zipWith (+) even_part factor1 ++ zipWith (-) even_part factor1
+    | otherwise = [y]
+    where
+        n = floatLength xs
+        factor = expBasis n
+        factor1 = zipWith (*) factor odd_part
+        even_part = fft $ evens xs
+        odd_part = fft $ odds xs
+
+ifftUnnormalised :: (Enum a, Floating a, RealFloat a) => [Complex a] -> [Complex a]
+ifftUnnormalised xs@(y:ys) 
+    | n > 1 = zipWith (+) even_part factor1 ++ zipWith (-) even_part factor1
+    | otherwise = [y]
+    where
+        n = floatLength xs
+        factor = conjugate <$> expBasis n
+        factor1 = zipWith (*) factor odd_part
+        even_part = ifftUnnormalised $ evens xs
+        odd_part = ifftUnnormalised $ odds xs
+
+ifft :: (Enum a, Floating a, RealFloat a) => [Complex a] -> [Complex a]
+ifft xs = (/n) <$> (ifftUnnormalised xs)
+    where
+        n = floatLength xs
+
+autocorr :: (Enum a, Floating a, RealFloat a) => Int -> [Complex a] -> [a]
+autocorr nlags xs = (/(head acovf)) <$> acovf
+    where
+        n = floatLength xs
+        fr = fft $ zeroPadding (nextRegular (2*n+1)) xs
+        acovf = take nlags (realPart <$> (ifft $ zipWith (*) fr (map conjugate fr)))
+
+zeroPadding :: (Num a) => Double -> [a] -> [a]
+zeroPadding m xs
+    | n < m = zeroPadding m (xs ++ [0])
+    | otherwise = xs
+    where
+        n = floatLength xs
+
+nextRegular :: (RealFrac a, Floating a) => a -> a
+nextRegular m = 2 ^ exponent
+    where
+        exponent = ceiling $ logBase 2 m
+
+-- zeroPadding :: [Double] -> [Double]
+-- zeroPadding xs
+--      | n < m = zeroPadding (xs ++ [0])
+--      | otherwise = xs
+--      where
+--         n = fromIntegral $ length xs
+--         exponent =  ceiling $ logBase 2 n
+--         m = 2.0 ^ exponent
+
+evens :: [a] -> [a]
+evens (x:z:xs) = x : evens xs
+evens (x:xs) = [x]
+evens _ = []
+
+odds :: [a] -> [a]
+odds (x:z:xs) = z : odds xs
+odds _ = []
+
+expBasis :: (Enum a, RealFloat a, Num a) => a -> [Complex a]
+expBasis n = map g [0..(n-1)]
+    where
+        exponent = (0 :+ ) <$> ((-2.0)*pi / n *)
+        g = exp . exponent
+
+normalise :: (Floating a) => [a] -> [a]
+normalise xs = [(x - mu) / sigma | x <- xs]
+    where
+        mu = mean xs
+        sigma = std xs
