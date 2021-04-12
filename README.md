@@ -20,3 +20,6 @@ Simple statistical package to learn a bit of Haskell
 * count: counting the occurrence of the elements in the array  
 * binning: simple histogram 
 * jarqueBera: Jarque-Bera test of normality with *p-value* computed from Chi-Squared distribution 
+* fft/ifft: radix-2 fast Fourier transform (seems to have floating precision error when used in autocorr)
+* autocorr: autocorrelation
+* normalise: normalisation of the data, subtracting the mean and dividing by std
