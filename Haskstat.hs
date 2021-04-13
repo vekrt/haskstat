@@ -194,7 +194,7 @@ autocorr :: (Enum a, Floating a, RealFloat a) => Int -> [Complex a] -> [a]
 autocorr nlags xs = (/(head acovf)) <$> acovf
     where
         n = floatLength xs
-        fr = fft $ zeroPadding (nextRegular (2*n+1)) xs
+        fr = fft $ zeroPadding (nextRegular (2*n+1)) (normalise xs)
         acovf = take nlags (realPart <$> (ifft $ zipWith (*) fr (map conjugate fr)))
 
 zeroPadding :: (Num a) => Double -> [a] -> [a]
